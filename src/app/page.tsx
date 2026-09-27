@@ -17,32 +17,46 @@ import {
   TrendingUp, 
   Sliders, 
   Send,
-  Zap,
-  Terminal,
-  Target,
-  ShieldCheck,
-  ChevronRight,
-  Eye,
-  CornerDownRight
+  Zap, 
+  Terminal, 
+  Target, 
+  ShieldCheck, 
+  ChevronRight, 
+  Eye, 
+  CornerDownRight,
+  Maximize2
 } from 'lucide-react';
 import { 
   SharpenedHypothesis, 
   ProjectCanvas, 
   LessonLearned, 
-  LoopPhase 
+  LoopPhase,
+  ScreenState
 } from '@/types/product-loop';
+import HeaderNav from '@/components/HeaderNav';
+import ExternalShareModal from '@/components/ExternalShareModal';
+import ScreenDetailModal from '@/components/ScreenDetailModal';
 
 // 기본 프리셋 시그널
 const SAMPLE_SIGNALS = [
-  'Liner 검색 결과창에서 추천 질문 클릭률(CTR)이 2.4%로 저조하여 탐색 전환 개선 필요',
-  '무료 유저가 유료 플랜 모달 진입 시 이탈률이 78%에 달해 가치 제안 재설계 필요',
-  '슬랙 스레드 아이디어: "모바일에서 긴 검색 결과 대신 1분 퀵 서머리 카드를 상단에 주면 어떨까요?"'
+  {
+    category: '검색 전환',
+    text: 'Liner 검색 결과창에서 추천 질문 클릭률(CTR)이 2.4%로 저조하여 탐색 전환 개선 필요'
+  },
+  {
+    category: '수익화/온보딩',
+    text: '무료 유저가 유료 플랜 모달 진입 시 이탈률이 78%에 달해 가치 제안 재설계 필요'
+  },
+  {
+    category: '아이디어 제안',
+    text: '슬랙 스레드 아이디어: "모바일에서 긴 검색 결과 대신 1분 퀵 서머리 카드를 상단에 주면 어떨까요?"'
+  }
 ];
 
 export default function ProductLoopDashboard() {
   const [cycle, setCycle] = useState(1);
   const [currentPhase, setCurrentPhase] = useState<LoopPhase>('signal');
-  const [rawInput, setRawInput] = useState(SAMPLE_SIGNALS[0]);
+  const [rawInput, setRawInput] = useState(SAMPLE_SIGNALS[0].text);
   const [loadingStep, setLoadingStep] = useState<string | null>(null);
 
   // States
@@ -54,6 +68,10 @@ export default function ProductLoopDashboard() {
   const [lessons, setLessons] = useState<LessonLearned | null>(null);
   const [copiedFigma, setCopiedFigma] = useState(false);
   const [copiedMarkdown, setCopiedMarkdown] = useState(false);
+
+  // Modals
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [inspectScreen, setInspectScreen] = useState<ScreenState | null>(null);
 
   // 1. Sharpening Trigger
   const handleSharpen = async (textToSharpen?: string) => {
@@ -159,6 +177,16 @@ export default function ProductLoopDashboard() {
     handleSharpen(nextTitle);
   };
 
+  // Reset Loop
+  const handleResetLoop = () => {
+    setCycle(1);
+    setHypothesis(null);
+    setCanvas(null);
+    setLessons(null);
+    setMicroEditHistory([]);
+    setCurrentPhase('signal');
+  };
+
   // Export Figma Payload
   const handleExportFigma = async () => {
     if (!canvas) return;
@@ -187,106 +215,57 @@ export default function ProductLoopDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
-      {/* Top Header */}
-      <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-40 px-6 py-3.5 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center font-bold text-white shadow-lg shadow-emerald-900/40">
-            P
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-base tracking-tight text-white">Product Loop</span>
-              <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                Pencil Model v1.0
-              </span>
-              <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                Cycle #{cycle}
-              </span>
-            </div>
-            <p className="text-xs text-slate-400">
-              가설 샤프닝 → 기획·시안·플로우 &quot;한 판&quot; → 레슨런 무한 루프 시스템
-            </p>
-          </div>
-        </div>
-
-        {/* Phase Indicator Pills */}
-        <div className="hidden lg:flex items-center gap-1.5 bg-slate-950 p-1.5 rounded-xl border border-slate-800 text-xs">
-          {[
-            { phase: 'signal', label: '1. 신호 & 가설' },
-            { phase: 'sharpening', label: '2. 샤프닝' },
-            { phase: 'canvas', label: '3. 프로젝트 한 판' },
-            { phase: 'execution_qa', label: '4. 검증 & QA' },
-            { phase: 'evaluation', label: '5. 레슨런 플라이휠' }
-          ].map((item, idx) => {
-            const isActive = currentPhase === item.phase;
-            return (
-              <div
-                key={idx}
-                className={`px-3 py-1 rounded-lg font-medium transition-all ${
-                  isActive 
-                    ? 'bg-emerald-600 text-white shadow-md' 
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                {item.label}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Global Reset */}
-        <button
-          onClick={() => {
-            setCycle(1);
-            setHypothesis(null);
-            setCanvas(null);
-            setLessons(null);
-            setCurrentPhase('signal');
-          }}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-800 text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors"
-        >
-          <RefreshCw className="w-3.5 h-3.5" />
-          루프 초기화
-        </button>
-      </header>
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-emerald-500/30 selection:text-emerald-200">
+      {/* Global Header Navigation with App Switcher & External Access Modal Trigger */}
+      <HeaderNav
+        activeApp="product"
+        cycle={cycle}
+        currentPhase={currentPhase}
+        onReset={handleResetLoop}
+        onOpenShareModal={() => setIsShareModalOpen(true)}
+      />
 
       {/* Main Content Area */}
-      <main className="flex-1 p-6 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <main className="flex-1 p-4 sm:p-6 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* Left Side: Signal Input & Sharpening Panel (Col 4) */}
         <div className="lg:col-span-4 flex flex-col gap-5">
           
           {/* 1. Signal / Seed Input */}
-          <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm">
+          <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm hover:border-slate-700/80 transition-all">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <Zap className="w-4 h-4 text-emerald-400" />
+                <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                  <Zap className="w-3.5 h-3.5" />
+                </div>
                 <h2 className="font-semibold text-sm text-slate-200">1. 신호 &amp; 아이디어 인입</h2>
               </div>
-              <span className="text-[11px] text-slate-400">Slack / 지표 / 유저 보이스</span>
+              <span className="text-[11px] text-slate-400">Slack / 지표 / CS</span>
             </div>
 
             <textarea
               value={rawInput}
               onChange={(e) => setRawInput(e.target.value)}
               placeholder="막연한 가설이나 유저 피드백, 지표 문제를 입력하세요..."
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 min-h-[90px] resize-none leading-relaxed"
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 min-h-[95px] resize-none leading-relaxed transition"
             />
 
             {/* Presets */}
             <div className="mt-3 flex flex-col gap-1.5">
-              <span className="text-[10px] text-slate-500 font-medium">자주 발생하는 시그널 예시:</span>
+              <span className="text-[10px] text-slate-500 font-medium">자주 발생하는 시그널 프리셋:</span>
               {SAMPLE_SIGNALS.map((sample, idx) => (
                 <button
                   key={idx}
                   onClick={() => {
-                    setRawInput(sample);
-                    handleSharpen(sample);
+                    setRawInput(sample.text);
+                    handleSharpen(sample.text);
                   }}
-                  className="text-left text-[11px] text-slate-400 hover:text-emerald-300 hover:bg-slate-800/60 p-2 rounded-lg transition-colors border border-slate-800/60 line-clamp-1"
+                  className="text-left text-[11px] text-slate-400 hover:text-emerald-300 hover:bg-slate-800/60 p-2.5 rounded-xl transition-all border border-slate-800/60 hover:border-emerald-500/30 flex items-start gap-2 group"
                 >
-                  💡 {sample}
+                  <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 group-hover:bg-emerald-500/20 group-hover:text-emerald-300 shrink-0">
+                    {sample.category}
+                  </span>
+                  <span className="line-clamp-1 leading-snug">{sample.text}</span>
                 </button>
               ))}
             </div>
@@ -294,12 +273,12 @@ export default function ProductLoopDashboard() {
             <button
               onClick={() => handleSharpen()}
               disabled={loadingStep === 'sharpen' || !rawInput.trim()}
-              className="mt-4 w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-medium text-xs py-2.5 px-4 rounded-xl transition-all shadow-md shadow-emerald-950"
+              className="mt-4 w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white font-medium text-xs py-2.5 px-4 rounded-xl transition-all shadow-md shadow-emerald-950 min-h-[44px]"
             >
               {loadingStep === 'sharpen' ? (
                 <>
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  가설 샤프닝 중...
+                  가설 샤프닝 분석 중...
                 </>
               ) : (
                 <>
@@ -312,42 +291,43 @@ export default function ProductLoopDashboard() {
 
           {/* 2. Sharpened Hypothesis Result Card */}
           {hypothesis && (
-            <section className="bg-slate-900 border border-emerald-500/30 rounded-2xl p-5 shadow-lg shadow-emerald-950/20 flex flex-col gap-4">
+            <section className="bg-slate-900 border border-emerald-500/30 rounded-2xl p-5 shadow-lg shadow-emerald-950/20 flex flex-col gap-4 animate-in fade-in duration-300">
               <div className="flex items-center justify-between pb-3 border-b border-slate-800">
                 <div className="flex items-center gap-2">
                   <Target className="w-4 h-4 text-emerald-400" />
                   <h3 className="font-semibold text-sm text-slate-100">2. 샤프닝된 가설 설계</h3>
                 </div>
-                <span className="px-2 py-0.5 text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 rounded border border-emerald-500/30">
+                <span className="px-2 py-0.5 text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 rounded-full border border-emerald-500/30">
                   SHARPENED
                 </span>
               </div>
 
               <div className="space-y-3 text-xs leading-relaxed">
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">타깃 사용자 (Target)</span>
-                  <p className="text-slate-200 bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">타깃 사용자 (Target User)</span>
+                  <p className="text-slate-200 bg-slate-950 p-2.5 rounded-xl border border-slate-800">
                     {hypothesis.targetUser}
                   </p>
                 </div>
 
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">대조 기준선 (Baseline)</span>
-                  <p className="text-slate-300 bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">대조 기준선 (Baseline)</span>
+                  <p className="text-slate-300 bg-slate-950 p-2.5 rounded-xl border border-slate-800">
                     {hypothesis.comparisonBaseline}
                   </p>
                 </div>
 
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">핵심 성공 지표 (Primary Metric)</span>
-                  <div className="bg-emerald-950/40 border border-emerald-800/40 p-2.5 rounded-lg text-emerald-300 font-medium">
-                    🎯 {hypothesis.successMetrics.primary}
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">핵심 성공 지표 (Primary Metric)</span>
+                  <div className="bg-emerald-950/40 border border-emerald-800/40 p-2.5 rounded-xl text-emerald-300 font-medium flex items-center gap-1.5">
+                    <span className="text-base">🎯</span>
+                    <span>{hypothesis.successMetrics.primary}</span>
                   </div>
                 </div>
 
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">가드레일 &amp; 통제 변수</span>
-                  <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-slate-400 text-[11px] space-y-1">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">가드레일 &amp; 통제 변수</span>
+                  <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-slate-400 text-[11px] space-y-1">
                     <p>🛡️ <strong className="text-slate-300">Guardrail:</strong> {hypothesis.successMetrics.guardrail}</p>
                     <p>⚖️ <strong className="text-slate-300">Control:</strong> {hypothesis.controlVariables[0]}</p>
                   </div>
@@ -358,7 +338,7 @@ export default function ProductLoopDashboard() {
               <button
                 onClick={handleGenerateCanvas}
                 disabled={loadingStep === 'canvas'}
-                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold text-xs py-3 px-4 rounded-xl transition-all shadow-lg shadow-emerald-900/30"
+                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 hover:opacity-90 text-white font-semibold text-xs py-3 px-4 rounded-xl transition-all shadow-lg shadow-emerald-900/30 min-h-[44px]"
               >
                 {loadingStep === 'canvas' ? (
                   <>
@@ -379,7 +359,7 @@ export default function ProductLoopDashboard() {
           <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 text-[11px] text-slate-400 leading-normal space-y-1.5">
             <div className="flex items-center gap-1.5 text-slate-300 font-semibold text-xs">
               <Terminal className="w-3.5 h-3.5 text-emerald-400" />
-              Liner Pencil Philosophy
+              Liner Pencil 철학
             </div>
             <p>
               &quot;화면 하나를 만드는 AI보다, 기획 명세·다양한 상태의 시안·플로우가 연결된 <strong>프로젝트 한 판</strong>을 만드는 것이 팀의 제품 속도를 좌우합니다.&quot;
@@ -391,7 +371,7 @@ export default function ProductLoopDashboard() {
         <div className="lg:col-span-8 flex flex-col gap-5">
           
           {canvas ? (
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl flex flex-col overflow-hidden shadow-xl">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl flex flex-col overflow-hidden shadow-xl animate-in fade-in duration-300">
               
               {/* Canvas Header & Tabs */}
               <div className="p-4 border-b border-slate-800 bg-slate-950 flex flex-wrap items-center justify-between gap-3">
@@ -405,7 +385,7 @@ export default function ProductLoopDashboard() {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {/* Canvas Tabs */}
                   <div className="flex items-center bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs">
                     <button
@@ -441,19 +421,19 @@ export default function ProductLoopDashboard() {
                   <button
                     onClick={handleExportFigma}
                     title="Figma Schema JSON 복사"
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 border border-slate-700 transition-colors"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-850 hover:bg-slate-800 text-xs text-slate-200 border border-slate-700/80 transition min-h-[36px]"
                   >
                     {copiedFigma ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Download className="w-3.5 h-3.5 text-indigo-400" />}
-                    Figma 연동
+                    <span>Figma 연동</span>
                   </button>
 
                   <button
                     onClick={handleCopyMarkdown}
                     title="PRD 마크다운 복사"
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 border border-slate-700 transition-colors"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-850 hover:bg-slate-800 text-xs text-slate-200 border border-slate-700/80 transition min-h-[36px]"
                   >
                     {copiedMarkdown ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
-                    PRD 복사
+                    <span>PRD 복사</span>
                   </button>
                 </div>
               </div>
@@ -462,10 +442,10 @@ export default function ProductLoopDashboard() {
               {activeCanvasTab === 'screens' && (
                 <div className="p-6 overflow-x-auto bg-slate-950/70">
                   <div className="flex gap-5 min-w-[900px] pb-3">
-                    {canvas.screens.map((screen, idx) => (
+                    {canvas.screens.map((screen) => (
                       <div 
                         key={screen.id} 
-                        className="flex-1 min-w-[280px] max-w-[320px] bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden flex flex-col shadow-lg"
+                        className="flex-1 min-w-[280px] max-w-[320px] bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden flex flex-col shadow-lg hover:border-slate-700 transition"
                       >
                         {/* Screen Card Title Bar */}
                         <div className="p-3 border-b border-slate-800 bg-slate-900/90 flex items-center justify-between">
@@ -473,9 +453,19 @@ export default function ProductLoopDashboard() {
                             <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                             <span className="font-semibold text-xs text-slate-200">{screen.name}</span>
                           </div>
-                          <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">
-                            {screen.stateType}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">
+                              {screen.stateType}
+                            </span>
+                            <button
+                              onClick={() => setInspectScreen(screen)}
+                              className="p-1 rounded text-slate-400 hover:text-emerald-400 hover:bg-slate-800 transition"
+                              title="화면 확대 인스펙트"
+                              aria-label="화면 확대"
+                            >
+                              <Maximize2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
 
                         {/* Interactive UI Mockup Preview */}
@@ -573,8 +563,14 @@ export default function ProductLoopDashboard() {
                         </div>
 
                         {/* Screen Description Footer */}
-                        <div className="p-2.5 bg-slate-900 border-t border-slate-800 text-[11px] text-slate-400">
-                          {screen.description}
+                        <div className="p-2.5 bg-slate-900 border-t border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
+                          <span className="line-clamp-1">{screen.description}</span>
+                          <button
+                            onClick={() => setInspectScreen(screen)}
+                            className="text-[10px] text-emerald-400 hover:underline shrink-0 ml-2"
+                          >
+                            상세
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -669,7 +665,7 @@ export default function ProductLoopDashboard() {
                     {canvas.flows.map((flow) => (
                       <div 
                         key={flow.id} 
-                        className="bg-slate-900 border border-slate-800 p-3 rounded-xl flex items-center justify-between text-xs"
+                        className="bg-slate-900 border border-slate-800 p-3 rounded-xl flex items-center justify-between text-xs hover:border-slate-700 transition"
                       >
                         <div className="flex items-center gap-2">
                           <span className="px-2 py-1 rounded bg-slate-800 text-slate-300 font-mono text-[11px]">
@@ -717,7 +713,7 @@ export default function ProductLoopDashboard() {
                     <button
                       key={pIdx}
                       onClick={() => handleMicroEdit(preset)}
-                      className="text-[10px] bg-slate-900 hover:bg-slate-800 text-slate-300 px-2.5 py-1 rounded-full border border-slate-800 transition-colors"
+                      className="text-[10px] bg-slate-900 hover:bg-slate-800 text-slate-300 px-2.5 py-1 rounded-full border border-slate-800 hover:border-emerald-500/40 transition-colors"
                     >
                       ⚡ {preset}
                     </button>
@@ -756,17 +752,18 @@ export default function ProductLoopDashboard() {
             </div>
           ) : (
             <div className="h-full min-h-[460px] bg-slate-900/40 border border-dashed border-slate-800 rounded-2xl flex flex-col items-center justify-center p-8 text-center">
-              <div className="w-12 h-12 rounded-2xl bg-slate-800/80 border border-slate-700 text-slate-400 flex items-center justify-center mb-3">
-                <Layers className="w-6 h-6" />
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-slate-800 to-slate-900 border border-slate-700 text-slate-400 flex items-center justify-center mb-4 shadow-xl">
+                <Layers className="w-7 h-7 text-emerald-400/80" />
               </div>
-              <h3 className="font-semibold text-sm text-slate-300">프로젝트 한 판(Canvas)이 대기 중입니다</h3>
-              <p className="text-xs text-slate-500 max-w-sm mt-1 mb-4 leading-relaxed">
-                좌측에서 신호를 입력하고 가설을 샤프닝한 후, 버튼을 누르면 기획 명세, 다양한 상태의 시안, 사용자 플로우가 한 번에 구성됩니다.
+              <h3 className="font-semibold text-sm text-slate-200">프로젝트 한 판(Canvas) 대기 중</h3>
+              <p className="text-xs text-slate-400 max-w-sm mt-1.5 mb-5 leading-relaxed">
+                좌측에서 신호를 입력하고 가설을 샤프닝한 후, 한 판 생성 버튼을 누르면 기획 명세, 상태별 시안, 사용자 플로우가 하나의 캔버스에 펼쳐집니다.
               </p>
               <button
                 onClick={() => handleSharpen()}
-                className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium px-4 py-2 rounded-xl border border-slate-700 transition-colors"
+                className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium px-4 py-2.5 rounded-xl border border-slate-700 transition-colors shadow-sm flex items-center gap-2"
               >
+                <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
                 기본 예시로 샤프닝 시작
               </button>
             </div>
@@ -774,16 +771,18 @@ export default function ProductLoopDashboard() {
 
           {/* 5. Lessons-Learned Flywheel Section (루프를 닫고 다음 가설로 연결) */}
           {canvas && (
-            <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm">
+            <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm animate-in fade-in duration-300">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-indigo-400" />
+                  <div className="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
+                    <TrendingUp className="w-3.5 h-3.5" />
+                  </div>
                   <h3 className="font-semibold text-sm text-slate-200">5. 지표 검증 &amp; 레슨런 플라이휠 (Lessons-Learned)</h3>
                 </div>
                 <button
                   onClick={handleExtractLessons}
                   disabled={loadingStep === 'flywheel'}
-                  className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shadow-sm"
+                  className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:opacity-90 text-white text-xs font-medium px-4 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-md shadow-indigo-950 min-h-[38px]"
                 >
                   {loadingStep === 'flywheel' ? (
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -797,23 +796,24 @@ export default function ProductLoopDashboard() {
               {lessons ? (
                 <div className="space-y-4">
                   {/* Results Banner */}
-                  <div className="p-3.5 rounded-xl bg-indigo-950/40 border border-indigo-500/30 flex items-center justify-between text-xs">
+                  <div className="p-4 rounded-xl bg-indigo-950/40 border border-indigo-500/30 flex items-center justify-between text-xs">
                     <div>
-                      <span className="text-[10px] text-indigo-400 uppercase font-bold block">실험 판정</span>
-                      <span className="text-sm font-bold text-white">
-                        ✅ 가설 검증 성공 ({lessons.actualResult})
+                      <span className="text-[10px] text-indigo-400 uppercase font-bold block">실험 결과 판정</span>
+                      <span className="text-sm font-bold text-white flex items-center gap-1.5 mt-0.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                        가설 검증 성공 ({lessons.actualResult})
                       </span>
                     </div>
                     <div className="text-right">
                       <span className="text-[10px] text-slate-400 block">대조군 대비 증감</span>
-                      <span className="text-xs font-semibold text-emerald-400">{lessons.delta}</span>
+                      <span className="text-sm font-bold text-emerald-400">{lessons.delta}</span>
                     </div>
                   </div>
 
                   {/* Key Insights & What worked / failed */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
-                      <span className="text-[10px] font-bold text-emerald-400 uppercase block mb-1">
+                    <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+                      <span className="text-[10px] font-bold text-emerald-400 uppercase block mb-1.5">
                         🎯 성공 요인 (What Worked)
                       </span>
                       <ul className="list-disc list-inside space-y-1 text-slate-300 text-[11px]">
@@ -823,8 +823,8 @@ export default function ProductLoopDashboard() {
                       </ul>
                     </div>
 
-                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
-                      <span className="text-[10px] font-bold text-rose-400 uppercase block mb-1">
+                    <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+                      <span className="text-[10px] font-bold text-rose-400 uppercase block mb-1.5">
                         ⚠️ 한계 및 개선점 (What Failed)
                       </span>
                       <ul className="list-disc list-inside space-y-1 text-slate-300 text-[11px]">
@@ -836,18 +836,18 @@ export default function ProductLoopDashboard() {
                   </div>
 
                   {/* Infinite Loop: Next Hypotheses Generation */}
-                  <div className="pt-2 border-t border-slate-800">
-                    <span className="text-xs font-semibold text-slate-300 block mb-2 flex items-center gap-1.5">
+                  <div className="pt-3 border-t border-slate-800">
+                    <span className="text-xs font-semibold text-slate-300 block mb-2.5 flex items-center gap-1.5">
                       <RefreshCw className="w-3.5 h-3.5 text-emerald-400" />
-                      레슨런 기반 다음 가설 후보 (클릭 시 다음 루프로 즉각 진입):
+                      레슨런 기반 후속 가설 후보 (클릭 시 다음 루프로 즉각 진입):
                     </span>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       {lessons.nextHypotheses.map((nextHypo, nIdx) => (
                         <button
                           key={nIdx}
                           onClick={() => handleStartNextCycle(nextHypo.title)}
-                          className="text-left bg-slate-950 hover:bg-slate-800/80 p-3 rounded-xl border border-slate-800 hover:border-emerald-500/50 transition-all group flex flex-col justify-between"
+                          className="text-left bg-slate-950 hover:bg-slate-850 p-3.5 rounded-xl border border-slate-800 hover:border-emerald-500/50 transition-all group flex flex-col justify-between"
                         >
                           <div>
                             <span className="text-[10px] text-emerald-400 font-semibold block mb-1">
@@ -869,7 +869,7 @@ export default function ProductLoopDashboard() {
                   </div>
                 </div>
               ) : (
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-400 leading-relaxed">
                   실험 배포 후 결과를 수집하고 버튼을 누르면, 가설 대비 실측 지표 분석과 함께 <strong>멈추지 않고 다음 실험으로 이어지는 3가지 가설</strong>이 자동 발굴됩니다.
                 </p>
               )}
@@ -878,6 +878,18 @@ export default function ProductLoopDashboard() {
 
         </div>
       </main>
+
+      {/* External Access / Live Share Guide Modal */}
+      <ExternalShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+      />
+
+      {/* Screen Detail Inspector Modal */}
+      <ScreenDetailModal
+        screen={inspectScreen}
+        onClose={() => setInspectScreen(null)}
+      />
     </div>
   );
 }
